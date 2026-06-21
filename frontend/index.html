@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyTube — Local Library</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='70' y='15' rx='18' fill='%23ff0033'/><path d='M42 38 L42 62 L64 50 Z' fill='white'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<!-- ===================== Top bar ===================== -->
+<header class="topbar">
+  <div class="brand" data-route="home">
+    <span class="logo"></span>
+    <span>MyTube <small>local</small></span>
+  </div>
+
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="Search your videos">
+    <button id="searchBtn" aria-label="Search">&#9906;</button>
+    <button id="subSearchToggle" class="sub-toggle" title="Also search inside captions/subtitles">CC</button>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="pill-btn" data-route="downloads"><span>&#8595;</span> Downloads <span id="dlBadge" class="badge" hidden>0</span></button>
+    <button class="pill-btn accent" data-route="add"><span>&#43;</span> Add channel</button>
+  </div>
+</header>
+
+<!-- ===================== Sidebar ===================== -->
+<aside class="sidebar">
+  <nav>
+    <div class="nav-item active" data-route="home"><span class="ico">&#8962;</span> Home</div>
+    <div class="nav-item" data-filter="inprogress"><span class="ico">&#9201;</span> Continue watching</div>
+    <div class="nav-item" data-filter="unwatched"><span class="ico">&#9679;</span> Unwatched</div>
+    <div class="nav-item" data-filter="notes"><span class="ico">&#9636;</span> With notes</div>
+    <div class="nav-item" data-route="add"><span class="ico">&#43;</span> Add channel</div>
+    <div class="nav-item" data-route="downloads"><span class="ico">&#8595;</span> Downloads</div>
+  </nav>
+
+  <div class="nav-sep"></div>
+  <div class="nav-label">Library</div>
+  <div id="channelList" class="channel-list"></div>
+
+  <div class="nav-sep"></div>
+  <div class="nav-item" data-route="settings"><span class="ico">&#9881;</span> Settings</div>
+  <div class="folder-name" id="folderName"></div>
+</aside>
+
+<!-- ===================== Main ===================== -->
+<main class="main">
+
+  <!-- Browse -->
+  <section id="view-browse" class="view active">
+    <div class="section-head">
+      <h2 id="browseTitle">All videos</h2>
+      <span id="browseCount" class="muted"></span>
+      <div class="spacer"></div>
+      <div class="filter-chips">
+        <div class="chip active" data-filter="all">All</div>
+        <div class="chip" data-filter="unwatched">Unwatched</div>
+        <div class="chip" data-filter="inprogress">In progress</div>
+        <div class="chip" data-filter="notes">With notes</div>
+      </div>
+      <select id="sortSelect" class="sort-select">
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+        <option value="title">Title A–Z</option>
+        <option value="longest">Longest</option>
+      </select>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- Watch -->
+  <section id="view-watch" class="view watch">
+    <div class="watch-main">
+      <div class="player-shell"><video id="player" controls playsinline></video></div>
+      <h1 id="wTitle"></h1>
+      <div class="action-row">
+        <div class="chan">
+          <div class="avatar" id="wAvatar"></div>
+          <div>
+            <div class="name" id="wChannel"></div>
+            <div class="meta" id="wMeta"></div>
+          </div>
+        </div>
+        <div class="action-btns">
+          <div class="speed-wrap">
+            <button class="pill-btn ghost" id="speedBtn">1x</button>
+            <div class="speed-menu" id="speedMenu">
+              <div data-speed="0.5">0.5x</div>
+              <div data-speed="0.75">0.75x</div>
+              <div data-speed="1" class="sel">Normal</div>
+              <div data-speed="1.25">1.25x</div>
+              <div data-speed="1.5">1.5x</div>
+              <div data-speed="1.75">1.75x</div>
+              <div data-speed="2">2x</div>
+            </div>
+          </div>
+          <button class="pill-btn" id="toggleAutoplay">Autoplay: <span id="autoplayState">On</span></button>
+          <button class="pill-btn" id="toggleWatched">Mark as watched</button>
+          <button class="pill-btn ghost" id="genSubsBtn" hidden>&#127908; Generate subtitles</button>
+          <button class="pill-btn ghost" id="renameBtn">Rename</button>
+          <button class="pill-btn ghost danger" id="deleteBtn">Delete</button>
+          <button class="pill-btn ghost" data-route="home">&#8592; Back</button>
+        </div>
+      </div>
+
+      <!-- Find in this video: search this video's own subtitle for a phrase, jump to any occurrence -->
+      <div class="findbox" id="findBox" hidden>
+        <div class="findbox-head">
+          <span>&#128269; Find in this video</span>
+        </div>
+        <div class="findbox-row">
+          <input type="text" id="findInput" class="text-input" placeholder="Search what was said in this video…">
+          <button class="pill-btn ghost small" id="findClear" hidden>Clear</button>
+        </div>
+        <div id="findResults" class="find-results"></div>
+      </div>
+
+      <!-- Local subtitle generation (Whisper) — shown only while choosing options or running -->
+      <div class="subgen-box" id="subgenBox" hidden>
+        <div class="subgen-head">
+          <span>&#127908; Generate subtitles locally (Whisper)</span>
+          <button class="pill-btn ghost small" id="subgenClose">&#10005;</button>
+        </div>
+        <div id="subgenForm">
+          <label class="field-label">Spoken language</label>
+          <div class="quality-row" id="subgenLangRow">
+            <button class="q-btn active" data-lang="">Auto-detect</button>
+            <button class="q-btn" data-lang="en">English</button>
+            <button class="q-btn" data-lang="fa">Persian</button>
+            <button class="q-btn" data-lang="ar">Arabic</button>
+            <button class="q-btn" data-lang="es">Spanish</button>
+            <button class="q-btn" data-lang="fr">French</button>
+          </div>
+          <input type="text" id="subgenCustomLang" class="text-input small-mt" placeholder="…or type a language code (e.g. de, ja, tr)">
+          <label class="field-label">Model size</label>
+          <div class="quality-row" id="subgenModelRow">
+            <button class="q-btn" data-model="tiny">Tiny (fastest)</button>
+            <button class="q-btn" data-model="base">Base</button>
+            <button class="q-btn active" data-model="small">Small</button>
+            <button class="q-btn" data-model="medium">Medium</button>
+            <button class="q-btn" data-model="large-v3">Large (best)</button>
+          </div>
+          <label class="check-row"><input type="checkbox" id="subgenUseCustomPath"> Use a model I already downloaded</label>
+          <input type="text" id="subgenCustomPath" class="text-input small-mt" placeholder="Local model folder path (e.g. C:\models\faster-whisper-small)" hidden>
+          <p class="hint" id="subgenCustomPathHint" hidden>Point this at a folder containing model.bin, config.json, tokenizer.json and vocabulary.txt — no internet access will be used.</p>
+          <label class="check-row"><input type="checkbox" id="subgenTranslate"> Translate to English</label>
+          <button class="pill-btn accent" id="subgenStart" style="margin-top:16px;">Start</button>
+          <p class="hint" id="subgenAvailHint"></p>
+        </div>
+        <div id="subgenProgress" hidden>
+          <div class="progress-track"><div class="progress-fill" id="subgenFill" style="width:0%"></div></div>
+          <div class="job-meta">
+            <span id="subgenStatus">Starting…</span>
+            <button class="pill-btn ghost small" id="subgenCancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes-box">
+        <div class="notes-head"><span>Notes</span><span class="meta" id="notesMeta"></span></div>
+        <textarea id="notes" placeholder="Write your notes about this video… (auto-saved)"></textarea>
+        <div class="notes-foot">
+          <button class="pill-btn" id="saveNotes">Save</button>
+          <button class="pill-btn ghost" id="clearNotes">Clear</button>
+          <span class="saved-tag" id="savedTag">Saved &#10003;</span>
+        </div>
+      </div>
+    </div>
+    <div class="watch-side">
+      <h3>Up next</h3>
+      <div class="kbd-hint">
+        <span><kbd>Space</kbd> play/pause</span>
+        <span><kbd>&#8592;</kbd>/<kbd>&#8594;</kbd> seek 5s</span>
+        <span><kbd>J</kbd>/<kbd>L</kbd> seek 10s</span>
+        <span><kbd>K</kbd> play/pause</span>
+        <span><kbd>F</kbd> fullscreen</span>
+        <span><kbd>M</kbd> mute</span>
+        <span><kbd>&#8593;</kbd>/<kbd>&#8595;</kbd> volume</span>
+      </div>
+      <div id="upnext" class="upnext-list"></div>
+    </div>
+  </section>
+
+  <!-- Add channel / download -->
+  <section id="view-add" class="view">
+    <div class="panel">
+      <h2>Add a channel or video</h2>
+      <p class="muted">Paste a YouTube channel, playlist, or video URL. Pick a category and it downloads into <code>Category / Channel / video</code> — sorted automatically.</p>
+
+      <label class="field-label">URL</label>
+      <input type="text" id="dlUrl" class="text-input" placeholder="https://www.youtube.com/@SomeChannel/videos">
+
+      <label class="field-label">Category</label>
+      <div class="quality-row" id="categoryRow">
+        <button class="q-btn" data-cat="Music">Music</button>
+        <button class="q-btn" data-cat="English">English</button>
+        <button class="q-btn" data-cat="Podcasts">Podcasts</button>
+        <button class="q-btn" data-cat="Courses">Courses</button>
+        <button class="q-btn" data-cat="General">General</button>
+      </div>
+      <input type="text" id="customCategory" class="text-input small-mt" placeholder="…or type a custom category (leave empty for none)">
+
+      <label class="field-label">Quality</label>
+      <div class="quality-row" id="qualityRow">
+        <button class="q-btn" data-q="2160">4K</button>
+        <button class="q-btn" data-q="1080">1080p</button>
+        <button class="q-btn active" data-q="720">720p</button>
+        <button class="q-btn" data-q="480">480p</button>
+        <button class="q-btn" data-q="audio">Audio (mp3)</button>
+      </div>
+
+      <label class="field-label">Subtitles</label>
+      <p class="hint" style="margin:-4px 0 10px;">Downloads YouTube's own captions (manually-added, or auto-generated) — in any language YouTube provides them.</p>
+      <div class="quality-row" id="subLangRow">
+        <button class="q-btn" data-sub="">Off</button>
+        <button class="q-btn" data-sub="all">All languages</button>
+        <button class="q-btn" data-sub="en">English</button>
+        <button class="q-btn" data-sub="fa">Persian</button>
+        <button class="q-btn" data-sub="en,fa">English + Persian</button>
+      </div>
+      <input type="text" id="customSubLangs" class="text-input small-mt" placeholder="…or type language codes, comma-separated (e.g. en,fa,ar)">
+
+      <button class="pill-btn accent big" id="startDownload"><span>&#8595;</span> Start download</button>
+
+      <div class="cmd-preview">
+        <div class="cmd-head">Equivalent yt-dlp command</div>
+        <pre id="cmdPreview"></pre>
+        <button class="pill-btn ghost small" id="copyCmd">Copy command</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Downloads -->
+  <section id="view-downloads" class="view">
+    <div class="section-head"><h2>Downloads</h2></div>
+    <div id="jobList" class="job-list"></div>
+    <div id="jobEmpty" class="empty small"><div class="big">&#8595;</div><p>No downloads yet. Add a channel to get started.</p></div>
+  </section>
+
+  <!-- Settings -->
+  <section id="view-settings" class="view">
+    <div class="panel">
+      <h2>Settings</h2>
+
+      <label class="field-label">Library folder</label>
+      <input type="text" id="setLibrary" class="text-input" placeholder="D:\English\youtube_english">
+      <p class="hint">Where videos are stored and scanned from.</p>
+
+      <label class="field-label">yt-dlp binary</label>
+      <input type="text" id="setBin" class="text-input" placeholder="yt-dlp">
+      <p class="hint">Path to yt-dlp, or just "yt-dlp" if it's on your PATH.</p>
+
+      <button class="pill-btn accent" id="saveSettings">Save settings</button>
+      <span class="saved-tag" id="settingsSaved">Saved &#10003;</span>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== Rename modal ===================== -->
+<div class="modal-backdrop" id="renameModal">
+  <div class="modal">
+    <h3>Rename video</h3>
+    <input type="text" id="renameInput" class="text-input">
+    <p class="hint">Only the title changes — the file extension stays the same.</p>
+    <div class="modal-actions">
+      <button class="pill-btn ghost" id="renameCancel">Cancel</button>
+      <button class="pill-btn accent" id="renameConfirm">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Delete confirm modal ===================== -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal">
+    <h3>Delete this video?</h3>
+    <p class="hint" id="deleteTarget"></p>
+    <p class="hint">This removes the video file (and its thumbnail/subtitle/info.json) from disk. This can't be undone.</p>
+    <div class="modal-actions">
+      <button class="pill-btn ghost" id="deleteCancel">Cancel</button>
+      <button class="pill-btn accent danger-solid" id="deleteConfirm">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

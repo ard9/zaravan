@@ -1,0 +1,7 @@
+{
+  "library_path": "D:\\English\\youtube_english",
+  "ytdlp_bin": "yt-dlp",
+  "default_quality": "720",
+  "host": "127.0.0.1",
+  "port": 8420
+}
