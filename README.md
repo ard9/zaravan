@@ -222,5 +222,5 @@ Built on the shoulders of excellent open‑source projects: [FastAPI](https://fa
 
 ## 📄 License
 
-Add your license of choice here (e.g. MIT). Until then, all rights reserved by the author.
+[MIT](LICENSE) — free for personal and commercial use.
 ---
